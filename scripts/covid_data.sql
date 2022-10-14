@@ -73,6 +73,25 @@ ORDER BY covidpop_percentage DESC
 --Andorra has the highest infection rate at 17.13%
 --US is ranked 9th
 
+--Let's break this down by continent
+
+SELECT location, MAX((total_cases/population)) * 100 AS covidpop_percentage 
+FROM covid_deaths
+WHERE continent IS NULL
+GROUP BY location, population
+ORDER BY covidpop_percentage DESC
+--North America had the highest COVID population percentage
+--Oceania (Australia) had the lowest COVID population percentage.
+
+SELECT location, MAX(total_cases) AS Highest_InfectionCount
+FROM covid_deaths
+WHERE continent IS NULL
+GROUP BY location, population
+ORDER BY Highest_InfectionCount DESC
+--Europe had the highest COVID infection count.
+--Oceania (Australia) had the lowest infection count.
+
+
 --======================================================================================================--
 
 --Now let's look at countires with the Highest Death Count per Population--
@@ -103,3 +122,66 @@ ORDER BY total_deathcount DESC
 --These the death count for each continent in this query are more accurate. We will use this query instead.
 --Europe was the continent with the highest number of deaths.
 --Oceania (Australia) was the continent with the lowest number of deaths.
+
+--======================================================================================================--
+
+--Global Numbers--
+
+SELECT date,
+	   SUM(new_cases) AS total_cases, 
+	   SUM(new_deaths) AS total_deaths, 
+	   SUM(new_deaths)/SUM(new_cases) * 100 AS death_percentage 
+FROM covid_deaths
+WHERE continent IS NOT NULL
+GROUP BY date
+ORDER BY 1, 2
+--Now we have our total number of global cases and deaths by date.
+
+--Let's look total global numbers
+SELECT SUM(new_cases) AS total_cases, 
+	   SUM(new_deaths) AS total_deaths, 
+	   SUM(new_deaths)/SUM(new_cases) * 100 AS death_percentage 
+FROM covid_deaths
+WHERE continent IS NOT NULL
+ORDER BY 1, 2
+--Globally there were 150,574,977 cases, 3,180,206 deaths, and 2.11 death percentage
+
+--======================================================================================================--
+
+--Let's join the COVID deaths and vaccinations tables together
+
+SELECT *
+FROM covid_deaths AS cd
+JOIN covid_vaccinations AS cv
+ON cd.location = cv.location
+AND cd.date = cv.date
+
+--======================================================================================================--
+
+
+--We are going to compare Total Population vs Vaccination
+SELECT cd.continent,
+	   cd.location,
+	   cd.date,
+	   cd.population,
+	   cv.new_vaccinations
+FROM covid_deaths AS cd
+JOIN covid_vaccinations AS cv
+ON cd.location = cv.location
+WHERE cd.continent IS NOT NULL
+AND cd.date = cv.date
+ORDER BY 2, 3
+--This query will give you the number of vaccinations administered per country by day.
+
+SELECT cd.continent,
+	   cd.location,
+	   cd.date,
+	   cd.population,
+	   cv.new_vaccinations,
+	   SUM(cv.new_vaccinations) OVER (PARTITION BY cd.Location Order BY cd.location, cd.date) AS rolling_peoplevax
+FROM covid_deaths AS cd
+JOIN covid_vaccinations AS cv
+ON cd.location = cv.location
+WHERE cd.continent IS NOT NULL
+AND cd.date = cv.date
+ORDER BY 2, 3
