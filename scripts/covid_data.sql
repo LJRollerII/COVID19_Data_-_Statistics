@@ -58,3 +58,48 @@ FROM covid_deaths
 WHERE location = 'Canada'
 ORDER BY 1, 2
 --This confirms what I expected before about Canada's smaller sample size.
+
+--========================================================================================================-----
+
+--Investigating Population to countries with the highest Infection Rate--
+SELECT location, 
+		population, 
+		MAX(total_cases) AS Highest_InfectionCount, 
+		MAX((total_cases/population)) * 100 AS covidpop_percentage 
+FROM covid_deaths
+GROUP BY location, population
+ORDER BY covidpop_percentage DESC
+
+--Andorra has the highest infection rate at 17.13%
+--US is ranked 9th
+
+--======================================================================================================--
+
+--Now let's look at countires with the Highest Death Count per Population--
+SELECT location, MAX(total_deaths) AS total_deathcount		
+FROM covid_deaths
+WHERE continent IS NOT NULL
+GROUP BY location
+ORDER BY total_deathcount DESC
+--The US has the highest death count per population
+
+--Let's break this down by continent
+/*Important: Do not use this query. Death count numbers are misleading. Use query after this:
+SELECT continent, MAX(total_deaths) AS total_deathcount		
+FROM covid_deaths
+WHERE continent IS NOT NULL
+GROUP BY continent
+ORDER BY total_deathcount DESC*/
+--North America was the continent with the highest number of deaths.
+--Oceania (Australia) was the continent with the lowest number of deaths.
+--The death count looks a very low in this query let's try another query.
+
+--*****Use this query to break down death count by continent*****--
+SELECT location, MAX(total_deaths) AS total_deathcount		
+FROM covid_deaths
+WHERE continent IS NULL
+GROUP BY location
+ORDER BY total_deathcount DESC
+--These the death count for each continent in this query are more accurate. We will use this query instead.
+--Europe was the continent with the highest number of deaths.
+--Oceania (Australia) was the continent with the lowest number of deaths.
