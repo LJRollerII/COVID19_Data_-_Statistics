@@ -168,11 +168,14 @@ SELECT cd.continent,
 FROM covid_deaths AS cd
 JOIN covid_vaccinations AS cv
 ON cd.location = cv.location
-WHERE cd.continent IS NOT NULL
 AND cd.date = cv.date
+WHERE cd.continent IS NOT NULL
 ORDER BY 2, 3
 --This query will give you the number of vaccinations administered per country by day.
 
+--We'll use partition to break the data up by country (location)
+-- This means the sum will start over after each country
+--Using date the over/partition statement will help us get a rolling count.
 SELECT cd.continent,
 	   cd.location,
 	   cd.date,
@@ -182,6 +185,100 @@ SELECT cd.continent,
 FROM covid_deaths AS cd
 JOIN covid_vaccinations AS cv
 ON cd.location = cv.location
-WHERE cd.continent IS NOT NULL
 AND cd.date = cv.date
+WHERE cd.continent IS NOT NULL
 ORDER BY 2, 3
+
+--To see how many people in each country were vaccinated there are multiple methods we can use to find this out.
+
+-- USE A CTE (Method #1)
+--Remember the number of columns in the CTE has to be the same as the select statement.
+
+WITH PopvsVax(continent, location, date, population, new_vaccinations, rolling_peoplevax)
+AS
+(
+SELECT cd.continent,
+	   cd.location,
+	   cd.date,
+	   cd.population,
+	   cv.new_vaccinations,
+	   SUM(cv.new_vaccinations) OVER (PARTITION BY cd.Location Order BY cd.location, cd.date) AS rolling_peoplevax
+FROM covid_deaths AS cd
+JOIN covid_vaccinations AS cv
+ON cd.location = cv.location
+AND cd.date = cv.date	
+WHERE cd.continent IS NOT NULL
+)
+SELECT *, (rolling_peoplevax/population) * 100 AS percent_vaccinated
+FROM PopvsVax
+
+--Temp Table (Method #2)
+
+DROP TABLE IF exists #PercentPopulationVaccinated
+CREATE TABLE #PercentPopulationVaccinated
+(
+continent nvarchar(255),
+location nvarchar(255),
+date datetime,
+population numeric,
+new_vaccinations numeric,
+rolling_peoplevax numeric
+)
+
+INSERT INTO #PercentPopulationVaccinated
+SELECT cd.continent,
+	   cd.location,
+	   cd.date,
+	   cd.population,
+	   cv.new_vaccinations,
+	   SUM(cv.new_vaccinations) OVER (PARTITION BY cd.Location Order BY cd.location, cd.date) AS rolling_peoplevax
+FROM covid_deaths AS cd
+JOIN covid_vaccinations AS cv
+ON cd.location = cv.location
+AND cd.date = cv.date
+
+SELECT *, (rolling_peoplevax/population) * 100 AS percent_vaccinated
+FROM #PercentPopulationVaccinated
+--======================================================================================================--
+
+-- Let's Create Views to store data for later visualizations--
+
+CREATE VIEW PercentPopulationVaccinated AS
+SELECT cd.continent,
+	   cd.location,
+	   cd.date,
+	   cd.population,
+	   cv.new_vaccinations,
+	   SUM(cv.new_vaccinations) OVER (PARTITION BY cd.Location Order BY cd.location, cd.date) AS rolling_peoplevax
+FROM covid_deaths AS cd
+JOIN covid_vaccinations AS cv
+ON cd.location = cv.location
+AND cd.date = cv.date
+WHERE cd.continent IS NOT NULL
+
+CREATE VIEW GlobalCasesANDDeaths AS
+SELECT date,
+	   SUM(new_cases) AS total_cases, 
+	   SUM(new_deaths) AS total_deaths, 
+	   SUM(new_deaths)/SUM(new_cases) * 100 AS death_percentage 
+FROM covid_deaths
+WHERE continent IS NOT NULL
+GROUP BY date
+ORDER BY 1, 2
+
+CREATE VIEW TotalDeathsByContinent AS
+SELECT location, MAX(total_deaths) AS total_deathcount		
+FROM covid_deaths
+WHERE continent IS NULL
+GROUP BY location
+ORDER BY total_deathcount DESC
+
+CREATE VIEW GlobalCasesAndDeathsByDate AS
+SELECT date,
+	   SUM(new_cases) AS total_cases, 
+	   SUM(new_deaths) AS total_deaths, 
+	   SUM(new_deaths)/SUM(new_cases) * 100 AS death_percentage 
+FROM covid_deaths
+WHERE continent IS NOT NULL
+GROUP BY date
+ORDER BY 1, 2
