@@ -91,6 +91,15 @@ ORDER BY Highest_InfectionCount DESC
 --Europe had the highest COVID infection count.
 --Oceania (Australia) had the lowest infection count.
 
+SELECT location, 
+		population,
+		date,
+		MAX(total_cases) AS Highest_InfectionCount, 
+		MAX((total_cases/population)) * 100 AS covidpop_percentage 
+FROM covid_deaths
+GROUP BY location, population, date
+ORDER BY covidpop_percentage DESC
+
 
 --======================================================================================================--
 
